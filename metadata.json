@@ -1,0 +1,6 @@
+{
+  "name": "星座占卜程式",
+  "description": "精緻的十二星座每日運勢、性格特質解析與 AI 星盤占卜大師，結合智慧為您解答感情、事業及財運之迷津。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #050508;
+  color: #d4d4d8;
+  overflow-x: hidden;
+}
+
+/* Custom Mystical Font Pairings */
+.font-mystic-serif {
+  font-family: 'Cinzel', 'Noto Serif TC', Georgia, Cambria, serif;
+}
+
+.font-mystic-sans {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+/* Astrological Rotating Keyframes (Mystic Astrolabe) */
+@keyframes slow-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slow-rotate-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-slow-rotate {
+  animation: slow-rotate 60s linear infinite;
+}
+
+.animate-slow-rotate-reverse {
+  animation: slow-rotate-reverse 45s linear infinite;
+}
+
+/* Crystal Ball Pulsing Pulse */
+@keyframes nebula-pulse {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(1);
+    filter: blur(20px);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.08);
+    filter: blur(28px);
+  }
+}
+
+.animate-nebula-pulse {
+  animation: nebula-pulse 8s ease-in-out infinite;
+}
+
+/* Glowing text and boxes */
+.glow-gold {
+  text-shadow: 0 0 10px rgba(197,164,126,0.4), 0 0 20px rgba(197,164,126,0.2);
+}
+
+.glow-box-gold {
+  box-shadow: 0 0 20px rgba(197,164,126,0.08);
+  border-color: rgba(197,164,126,0.25);
+}
+
+/* Custom Markdown formatting for insight outputs text */
+.markdown-content p {
+  margin-bottom: 1.25rem;
+  line-height: 1.8;
+  font-size: 0.95rem;
+}
+
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content blockquote {
+  border-left: 2px solid #c5a47e;
+  padding-left: 1rem;
+  margin: 1.25rem 0;
+  font-style: italic;
+  color: #a1a1aa;
+  background: rgba(197,164,126,0.03);
+  border-radius: 0 4px 4px 0;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.markdown-content ul, .markdown-content ol {
+  margin-left: 1.5rem;
+  margin-bottom: 1.25rem;
+  list-style-type: square;
+}
+
+.markdown-content li {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.markdown-content li strong {
+  color: #c5a47e;
+}
+
+.markdown-content h1, .markdown-content h2, .markdown-content h3 {
+  font-family: 'Cinzel', 'Noto Serif TC', serif;
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-content h1 {
+  font-size: 1.4rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding-bottom: 0.5rem;
+}
+
+.markdown-content h2 {
+  font-size: 1.25rem;
+  color: #c5a47e;
+}
+
+.markdown-content h3 {
+  font-size: 1.1rem;
+}
+
+/* Stagger entry animations for layout elements */
+@keyframes fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-slide-in {
+  animation: fade-slide-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
