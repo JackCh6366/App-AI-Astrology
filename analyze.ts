@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 export const config = {
-  maxDuration: 60, // Serverless Function 執行時長限制
+  maxDuration: 60,
 };
 
 export default async function handler(req: any, res: any) {
@@ -24,7 +24,6 @@ export default async function handler(req: any, res: any) {
 
   try {
     if (provider === "nvidia") {
-      // NVIDIA API 呼叫 (OpenAI 兼容格式)
       const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -32,18 +31,20 @@ export default async function handler(req: any, res: any) {
           "Authorization": `Bearer ${process.env.NVIDIA_API_KEY}`,
         },
         body: JSON.stringify({
-          model: "nvidia/llama-3.3-nemotron-70b-instruct", // 修正為目前 NVIDIA 平台上正確的 Llama-3.3 命名
+          model: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
           messages: [
             { role: "system", content: systemInstruction },
             { role: "user", content: userPrompt }
           ],
           temperature: 0.7,
-          max_tokens: 1024,
+          max_tokens: 1500,
         }),
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error?.message || "NVIDIA API 錯誤");
+      if (!response.ok) {
+        throw new Error(data.error?.message || "NVIDIA API 軌域連結失敗");
+      }
 
       return res.status(200).json({
         success: true,
@@ -52,10 +53,10 @@ export default async function handler(req: any, res: any) {
       });
 
     } else {
-      // 預設使用 Google Gemini
+      // Google Gemini 2.5 Flash Lite
       const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY || "");
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.0-flash", // 推薦使用當前最穩定的 Flash 模型
+        model: "gemini-2.5-flash-lite", 
         systemInstruction: systemInstruction 
       });
 
@@ -69,10 +70,10 @@ export default async function handler(req: any, res: any) {
       });
     }
   } catch (error: any) {
-    console.error("AI API Error:", error);
+    console.error("Divine Error:", error);
     return res.status(500).json({
       success: false,
-      error: error.message || "宇宙訊息傳遞中斷，請確認環境變數配置或稍後再試。"
+      error: error.message || "宇宙能量傳遞中斷，請確認秘鑰配置。"
     });
   }
 }
