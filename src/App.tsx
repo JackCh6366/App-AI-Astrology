@@ -87,6 +87,7 @@ export default function App() {
   const [aiBirthtime, setAiBirthtime] = useState<string>("");
   const [aiGender, setAiGender] = useState<string>("未透露");
   const [aiCategory, setAiCategory] = useState<"愛情" | "事業" | "學業" | "財運" | "綜合運勢">("綜合運勢");
+  const [aiProvider, setAiProvider] = useState<"gemini" | "nvidia">("gemini");
   const [aiQuestion, setAiQuestion] = useState<string>("");
   
   // AI 占卜狀態管理
@@ -330,7 +331,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch("/api/astrology/divine", {
+      const response = await fetch("/api/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -342,7 +343,8 @@ export default function App() {
           gender: aiGender,
           sign: selectedSign.name,
           category: aiCategory,
-          question: aiQuestion
+          question: aiQuestion,
+          provider: aiProvider
         })
       });
 
@@ -1479,6 +1481,24 @@ export default function App() {
                           }`}
                         >
                           {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-[#71717a] uppercase mb-1.5 tracking-wider font-semibold">對接 AI 靈魂星軌</label>
+                    <div className="flex gap-2">
+                      {(["gemini", "nvidia"] as const).map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setAiProvider(p)}
+                          className={`flex-1 py-2 text-[10px] rounded border transition-all font-bold uppercase ${
+                            aiProvider === p ? "border-[#c5a47e] text-[#c5a47e] bg-[#c5a47e]/10" : "border-[#1f1f23] text-[#71717a]"
+                          }`}
+                        >
+                          {p === "gemini" ? "Google Gemini" : "NVIDIA Llama"}
                         </button>
                       ))}
                     </div>
