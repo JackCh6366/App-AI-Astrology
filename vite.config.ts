@@ -11,23 +11,34 @@ function devApiPlugin(env: Record<string, string>) {
       server.middlewares.use(
         '/api/astrology/divine',
         async (req: any, res: any) => {
-          if (req.method !== 'POST') {
-            res.writeHead(405, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Method Not Allowed' }));
-            return;
-          }
+          // Helper — always sends JSON, guards against double-write
+          const sendJson = (status: number, payload: object) => {
+            if (res.headersSent) return;
+            const json = JSON.stringify(payload);
+            res.writeHead(status, {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(json),
+            });
+            res.end(json);
+          };
 
-          // Read raw body
-          const chunks: Buffer[] = [];
-          await new Promise<void>((resolve, reject) => {
-            req.on('data', (c: Buffer) => chunks.push(c));
-            req.on('end', resolve);
-            req.on('error', reject);
-          });
-          const parsed = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
-          const { name, birthdate, birthtime, gender, sign, category, question, provider } = parsed;
+          // ── Everything inside ONE try/catch so any crash → JSON error ──
+          try {
+            if (req.method !== 'POST') {
+              return sendJson(405, { error: 'Method Not Allowed' });
+            }
 
-          const systemInstruction = `你是一位精通西方星盤占星學、靈數學的老靈魂占卜大師，筆名「奧秘星域主宰」。
+            // Read raw body
+            const chunks: Buffer[] = [];
+            await new Promise<void>((resolve, reject) => {
+              req.on('data', (c: Buffer) => chunks.push(c));
+              req.on('end', resolve);
+              req.on('error', reject);
+            });
+            const parsed = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+            const { name, birthdate, birthtime, gender, sign, category, question, provider } = parsed;
+
+            const systemInstruction = `你是一位精通西方星盤占星學、靈數學的老靈魂占卜大師，筆名「奧秘星域主宰」。
 求問者：${name || '尋求指引的靈魂'}，星座：${sign}，性別：${gender}，詢問：${category}。
 出生日期：${birthdate || '未提供'}，出生時間：${birthtime || '未提供'}。
 具體疑惑：${question || '無特定，希望獲得近期宇宙能量分析'}。
@@ -37,22 +48,15 @@ function devApiPlugin(env: Record<string, string>) {
 3. 【具體疑惑解答 / 智慧神諭】針對求問者的困惑給予明確指引
 4. 【幸運之鑰】幸運色、幸運水晶、幸運數字、靈魂叮嚀`;
 
-          const userPrompt = `大師，我是 ${name || '一個迷茫的靈魂'}。請為我占卜近期的【${category}】運勢。${question ? `我的困惑是：${question}` : ''}`;
+            const userPrompt = `大師，我是 ${name || '一個迷茫的靈魂'}。請為我占卜近期的【${category}】運勢。${question ? `我的困惑是：${question}` : ''}`;
 
-          const sendJson = (status: number, data: object) => {
-            const json = JSON.stringify(data);
-            res.writeHead(status, {
-              'Content-Type': 'application/json',
-              'Content-Length': Buffer.byteLength(json),
-            });
-            res.end(json);
-          };
-
-          try {
             if (provider === 'nvidia') {
               const nvKey = env.NVIDIA_API_KEY;
               if (!nvKey) {
                 return sendJson(500, { success: false, error: '請在 .env.local 填入有效的 NVIDIA_API_KEY' });
+              }
+              if (!nvKey.startsWith('nvapi-')) {
+                return sendJson(500, { success: false, error: `NVIDIA_API_KEY 格式無效（應以 nvapi- 開頭）。請至 https://build.nvidia.com 重新取得金鑰。` });
               }
               const resp = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
                 method: 'POST',
@@ -68,10 +72,14 @@ function devApiPlugin(env: Record<string, string>) {
                 }),
               });
               const rawText = await resp.text();
-              let data: any;
-              try { data = JSON.parse(rawText); } catch { throw new Error(`NVIDIA 解析失敗：${rawText.slice(0, 200)}`); }
-              if (!resp.ok) throw new Error(data.error?.message || `NVIDIA HTTP ${resp.status}`);
-              return sendJson(200, { success: true, insight: data.choices[0].message.content, timestamp: new Date().toISOString() });
+              let nvData: any;
+              try {
+                nvData = JSON.parse(rawText);
+              } catch {
+                throw new Error(`NVIDIA 回應非 JSON（HTTP ${resp.status}）：${rawText.slice(0, 200)}`);
+              }
+              if (!resp.ok) throw new Error(nvData.error?.message || `NVIDIA API 錯誤 (HTTP ${resp.status})`);
+              return sendJson(200, { success: true, insight: nvData.choices[0].message.content, timestamp: new Date().toISOString() });
 
             } else {
               const gemKey = env.GEMINI_API_KEY;
@@ -99,8 +107,10 @@ function devApiPlugin(env: Record<string, string>) {
               }
               return sendJson(200, { success: true, insight: result.text ?? '', timestamp: new Date().toISOString() });
             }
+
           } catch (err: any) {
             console.error('[Dev API] Error:', err.message);
+            // Always respond with JSON — never let the middleware crash silently
             return sendJson(500, { success: false, error: err.message || '宇宙能量傳遞中斷' });
           }
         }
