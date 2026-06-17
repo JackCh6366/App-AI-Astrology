@@ -78,6 +78,9 @@ function devApiPlugin(env: Record<string, string>) {
               if (!gemKey) {
                 return sendJson(500, { success: false, error: '請在 .env.local 填入有效的 GEMINI_API_KEY' });
               }
+              if (!gemKey.startsWith('AIzaSy')) {
+                return sendJson(500, { success: false, error: `GEMINI_API_KEY 格式無效（應以 AIzaSy 開頭，目前為「${gemKey.slice(0, 6)}...」）。請至 https://aistudio.google.com/apikey 重新取得正式金鑰。` });
+              }
               const { GoogleGenAI } = await import('@google/genai');
               const ai = new GoogleGenAI({ apiKey: gemKey });
               let result: any;

@@ -348,7 +348,20 @@ export default function App() {
         })
       });
 
-      const data = await response.json() as DivineResponse;
+      const rawText = await response.text();
+      let data: DivineResponse;
+      try {
+        data = JSON.parse(rawText) as DivineResponse;
+      } catch {
+        // Server returned non-JSON (e.g. plain-text SDK error or HTML crash page)
+        const preview = rawText.slice(0, 300);
+        console.error("Non-JSON response from API:", preview);
+        throw new Error(
+          response.status === 500
+            ? `伺服器發生錯誤（HTTP 500）。請確認 .env.local 中的 API 金鑰格式正確（Gemini 金鑰應以 AIzaSy 開頭），並重新啟動 npm run dev。`
+            : `伺服器回傳非 JSON 格式（HTTP ${response.status}）：${preview}`
+        );
+      }
 
       if (data.success && data.insight) {
         setDivineResult(data.insight);
