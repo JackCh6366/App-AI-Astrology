@@ -37,7 +37,9 @@ export default async function handler(req: any, res: any) {
   try {
     if (provider === "nvidia") {
       const nvApiKey = process.env.NVIDIA_API_KEY;
-      if (!nvApiKey) throw new Error("NVIDIA_API_KEY 尚未配置");
+      if (!nvApiKey) {
+        throw new Error("NVIDIA_API_KEY 尚未配置於環境設定中");
+      }
 
       const response = await fetch(
         "https://integrate.api.nvidia.com/v1/chat/completions",
@@ -66,8 +68,13 @@ export default async function handler(req: any, res: any) {
       } catch {
         throw new Error(`NVIDIA 回應解析失敗：${rawText.slice(0, 200)}`);
       }
-      if (!response.ok)
-        throw new Error(data.error?.message || `NVIDIA HTTP ${response.status}`);
+
+      if (!response.ok) {
+        throw new Error(
+          data.error?.message ||
+            `NVIDIA API 軌域連結失敗 (HTTP ${response.status})`
+        );
+      }
 
       return res.status(200).json({
         success: true,
@@ -77,9 +84,12 @@ export default async function handler(req: any, res: any) {
     } else {
       // Google Gemini via @google/genai v2 SDK
       const geminiKey = process.env.GEMINI_API_KEY;
-      if (!geminiKey) throw new Error("GEMINI_API_KEY 尚未配置");
+      if (!geminiKey) {
+        throw new Error("GEMINI_API_KEY 尚未配置於環境設定中");
+      }
 
       const ai = new GoogleGenAI({ apiKey: geminiKey });
+
       const result = await ai.models.generateContent({
         model: "gemini-2.0-flash-lite",
         config: {
@@ -90,9 +100,11 @@ export default async function handler(req: any, res: any) {
         contents: userPrompt,
       });
 
+      const text = result.text ?? "";
+
       return res.status(200).json({
         success: true,
-        insight: result.text ?? "",
+        insight: text,
         timestamp: new Date().toISOString(),
       });
     }

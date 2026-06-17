@@ -87,7 +87,7 @@ export default function App() {
   const [aiBirthtime, setAiBirthtime] = useState<string>("");
   const [aiGender, setAiGender] = useState<string>("未透露");
   const [aiCategory, setAiCategory] = useState<"愛情" | "事業" | "學業" | "財運" | "綜合運勢">("綜合運勢");
-  const [aiProvider, setAiProvider] = useState<"gemini" | "nvidia">("gemini");
+  const [aiProvider, setAiProvider] = useState<"gemini" | "nvidia">("nvidia");
   const [aiQuestion, setAiQuestion] = useState<string>("");
   
   // AI 占卜狀態管理
@@ -357,7 +357,7 @@ export default function App() {
       }
     } catch (err: any) {
       console.error(err);
-      setErrorMsg("連結天界阻端。請確認您的伺服器是否就緒，或有無確實配置 Settings 內的 GEMINI_API_KEY！");
+      setErrorMsg(err.message || "連結天界阻端。請確認 .env.local 內的 API 金鑰是否正確填入，並重新啟動 npm run dev。");
     } finally {
       setIsDivining(false);
     }
@@ -1578,7 +1578,7 @@ export default function App() {
                     </p>
                     
                     <p className="text-[10px] text-amber-500/70 mt-4 leading-normal max-w-xs">
-                      提示：請檢查後端是否啟動，並在 Settings 的 Secrets 中將您的 GEMINI_API_KEY 填入，以利開啟 AI 預言。
+                      提示：請在專案根目錄的 <code className="bg-[#1f1f23] px-1 rounded">.env.local</code> 填入有效的 GEMINI_API_KEY 或 NVIDIA_API_KEY，並重新啟動 <code className="bg-[#1f1f23] px-1 rounded">npm run dev</code>。
                     </p>
                   </div>
                 )}
