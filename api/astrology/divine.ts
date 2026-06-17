@@ -1,8 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
 
 export const config = {
-  maxDuration: 60,
+  maxDuration: 60, // Vercel Pro/Enterprise; Hobby is capped at 10s
 };
+
+// Abort helper — resolves to a signal that fires after `ms` milliseconds
+function timeoutSignal(ms: number): AbortSignal {
+  return AbortSignal.timeout ? AbortSignal.timeout(ms) : new AbortController().signal;
+}
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
@@ -20,15 +25,15 @@ export default async function handler(req: any, res: any) {
     provider,
   } = req.body;
 
-  const systemInstruction = `你是一位精通西方星盤占星學、靈數學的老靈魂占卜大師，筆名「奧秘星域主宰」。
-求問者：${name || "尋求指引的靈魂"}，星座：${sign}，性別：${gender}，詢問：${category}。
-出生日期：${birthdate || "未提供"}，出生時間：${birthtime || "未提供"}。
-具體疑惑：${question || "無特定，希望獲得近期宇宙能量分析"}。
-請依據以下結構分析並使用繁體中文（台灣用法），語氣神秘而有深度，每個段落至少150字：
-1. 【星軌指引與宇宙共鳴】深度解析當前星象對求問者的影響
-2. 【星盤能量剖析】結合星座特質與當前天象，細述能量流向
-3. 【具體疑惑解答 / 智慧神諭】針對求問者的困惑給予明確指引
-4. 【幸運之鑰】幸運色、幸運水晶、幸運數字、靈魂叮嚀`;
+  const systemInstruction = `你是占卜大師「奧秘星域主宰」，精通西洋占星與靈數學。
+求問者：${name || "靈魂"}，星座：${sign}，性別：${gender}，主題：${category}。
+生日：${birthdate || "未知"}，時間：${birthtime || "未知"}。
+困惑：${question || "近期宇宙能量"}。
+請以繁體中文（台灣用法）、神秘深邃語氣，依下列四段簡潔回答（每段約80字）：
+1.【星軌指引】當前星象影響
+2.【星盤能量】星座特質與能量流向
+3.【神諭解答】針對困惑的指引
+4.【幸運之鑰】幸運色・水晶・數字・靈魂叮嚀`;
 
   const userPrompt = `大師，我是 ${name || "一個迷茫的靈魂"}。請為我占卜近期的【${category}】運勢。${
     question ? `我的困惑是：${question}` : ""
@@ -45,6 +50,7 @@ export default async function handler(req: any, res: any) {
         "https://integrate.api.nvidia.com/v1/chat/completions",
         {
           method: "POST",
+          signal: timeoutSignal(8000), // 8s hard cut-off (Vercel Hobby = 10s)
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${nvApiKey}`,
@@ -56,7 +62,8 @@ export default async function handler(req: any, res: any) {
               { role: "user", content: userPrompt },
             ],
             temperature: 0.7,
-            max_tokens: 2000,
+            max_tokens: 1200, // reduced to fit within timeout
+            stream: false,
           }),
         }
       );
@@ -90,15 +97,23 @@ export default async function handler(req: any, res: any) {
 
       const ai = new GoogleGenAI({ apiKey: geminiKey });
 
-      const result = await ai.models.generateContent({
-        model: "gemini-2.0-flash-lite",
-        config: {
-          systemInstruction: systemInstruction,
-          temperature: 0.9,
-          maxOutputTokens: 2048,
-        },
-        contents: userPrompt,
-      });
+      // Use a short-lived AbortController so we don't exceed the 10s Vercel Hobby wall
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      let result: any;
+      try {
+        result = await ai.models.generateContent({
+          model: "gemini-2.0-flash-lite",
+          config: {
+            systemInstruction: systemInstruction,
+            temperature: 0.9,
+            maxOutputTokens: 1200, // reduced to stay within timeout
+          },
+          contents: userPrompt,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
 
       const text = result.text ?? "";
 
