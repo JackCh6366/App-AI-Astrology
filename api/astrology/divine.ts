@@ -4,9 +4,12 @@ export const config = {
   maxDuration: 60, // Vercel Pro/Enterprise; Hobby is capped at 10s
 };
 
-// Abort helper — resolves to a signal that fires after `ms` milliseconds
+// Abort helper — fires after `ms` milliseconds
 function timeoutSignal(ms: number): AbortSignal {
-  return AbortSignal.timeout ? AbortSignal.timeout(ms) : new AbortController().signal;
+  if (typeof AbortSignal.timeout === "function") return AbortSignal.timeout(ms);
+  const ac = new AbortController();
+  setTimeout(() => ac.abort(), ms);
+  return ac.signal;
 }
 
 export default async function handler(req: any, res: any) {
@@ -42,27 +45,28 @@ export default async function handler(req: any, res: any) {
   try {
     if (provider === "nvidia") {
       const nvApiKey = process.env.NVIDIA_API_KEY;
-      if (!nvApiKey) {
-        throw new Error("NVIDIA_API_KEY 尚未配置於環境設定中");
-      }
+      if (!nvApiKey) throw new Error("NVIDIA_API_KEY 尚未配置於環境設定中");
+      if (!nvApiKey.startsWith("nvapi-"))
+        throw new Error(`NVIDIA_API_KEY 格式無效（應以 nvapi- 開頭）。請至 https://build.nvidia.com 重新取得金鑰。`);
 
+      // Use llama-3.1-8b: much faster than the 49B model, fits in serverless time limits
       const response = await fetch(
         "https://integrate.api.nvidia.com/v1/chat/completions",
         {
           method: "POST",
-          signal: timeoutSignal(8000), // 8s hard cut-off (Vercel Hobby = 10s)
+          signal: timeoutSignal(25000), // 25s; Vercel Hobby hard-caps at 10s regardless
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${nvApiKey}`,
           },
           body: JSON.stringify({
-            model: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+            model: "meta/llama-3.1-8b-instruct",
             messages: [
               { role: "system", content: systemInstruction },
               { role: "user", content: userPrompt },
             ],
             temperature: 0.7,
-            max_tokens: 1200, // reduced to fit within timeout
+            max_tokens: 1200,
             stream: false,
           }),
         }
@@ -91,15 +95,12 @@ export default async function handler(req: any, res: any) {
     } else {
       // Google Gemini via @google/genai v2 SDK
       const geminiKey = process.env.GEMINI_API_KEY;
-      if (!geminiKey) {
-        throw new Error("GEMINI_API_KEY 尚未配置於環境設定中");
-      }
+      if (!geminiKey) throw new Error("GEMINI_API_KEY 尚未配置於環境設定中");
+      if (!geminiKey.startsWith("AIzaSy"))
+        throw new Error(`GEMINI_API_KEY 格式無效（應以 AIzaSy 開頭，目前為「${geminiKey.slice(0, 8)}...」）。請至 https://aistudio.google.com/apikey 重新取得正式金鑰。`);
 
       const ai = new GoogleGenAI({ apiKey: geminiKey });
 
-      // Use a short-lived AbortController so we don't exceed the 10s Vercel Hobby wall
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 8000);
       let result: any;
       try {
         result = await ai.models.generateContent({
@@ -107,12 +108,17 @@ export default async function handler(req: any, res: any) {
           config: {
             systemInstruction: systemInstruction,
             temperature: 0.9,
-            maxOutputTokens: 1200, // reduced to stay within timeout
+            maxOutputTokens: 1200,
           },
           contents: userPrompt,
         });
-      } finally {
-        clearTimeout(timer);
+      } catch (gemErr: any) {
+        const msg: string = gemErr?.message ?? "";
+        if (msg.includes("API_KEY_INVALID") || msg.includes("invalid API key"))
+          throw new Error(`Gemini API Key 無效，請至 https://aistudio.google.com/apikey 重新取得以 AIzaSy 開頭的金鑰。`);
+        if (msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota"))
+          throw new Error(`Gemini 配額已用盡，請明天再試或升級至付費方案。`);
+        throw gemErr;
       }
 
       const text = result.text ?? "";

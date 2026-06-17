@@ -62,13 +62,14 @@ function devApiPlugin(env: Record<string, string>) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${nvKey}` },
                 body: JSON.stringify({
-                  model: 'nvidia/llama-3.3-nemotron-super-49b-v1.5',
+                  model: 'meta/llama-3.1-8b-instruct',
                   messages: [
                     { role: 'system', content: systemInstruction },
                     { role: 'user', content: userPrompt },
                   ],
                   temperature: 0.7,
-                  max_tokens: 2000,
+                  max_tokens: 1200,
+                  stream: false,
                 }),
               });
               const rawText = await resp.text();
